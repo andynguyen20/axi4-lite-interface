@@ -45,8 +45,8 @@ module axi_lite_slave(
     assign w_hs = s_axi_wvalid && s_axi_wready;
     assign b_hs = s_axi_bvalid && s_axi_bready;
     
-    assign s_axi_awready = 1'b1; 
-    assign s_axi_wready = 1'b1;
+    assign s_axi_awready = ~s_axi_bvalid; 
+    assign s_axi_wready = ~s_axi_bvalid;
     
     logic [31:0] awaddr_buf;
     logic [31:0] wdata_buf;
@@ -76,6 +76,9 @@ module axi_lite_slave(
             s_axi_bvalid <= 1'b0;
             aw_pending <= 1'b0;
             w_pending <= 1'b0;
+            awaddr_buf <= 32'b0;
+            wdata_buf <= 32'b0;
+            wstrb_buf <= 4'b0000;
         end
         else begin
             if(aw_hs) begin                 // write logic
@@ -87,7 +90,15 @@ module axi_lite_slave(
                 wstrb_buf <= s_axi_wstrb;
                 w_pending <= 1'b1;
             end
-            if(aw_pending && w_pending && !s_axi_bvalid) begin
+            if(aw_pending && w_pending && !s_axi_bvalid) begin;
+                reg_file[aw_index] <= (reg_file[aw_index] & ~wdata_mask) | (wdata_buf & wdata_mask);
+                aw_pending <= 1'b0;
+                w_pending <= 1'b0;
+                s_axi_bvalid <= 1'b1;
+                s_axi_bresp <= 2'b00;
+            end
+            if (b_hs) begin
+                s_axi_bvalid <= 1'b0;
             end
         end
      end
